@@ -26,5 +26,6 @@
     "eslint-config-next": "15.5.28",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "pnpm@9.13.0"
 }

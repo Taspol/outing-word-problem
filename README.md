@@ -14,9 +14,11 @@ the session QR code follow each puzzle and its answer live.
 
 ## Run locally
 
+This project uses [pnpm](https://pnpm.io) (`corepack enable` sets up the pinned version).
+
 ```bash
-npm install
-npm run dev          # http://localhost:3000 (or the next free port)
+pnpm install
+pnpm dev             # http://localhost:3000 (or the next free port)
 ```
 
 Phones on the same Wi-Fi can scan the QR code: it uses the computer's network address automatically.
@@ -42,8 +44,8 @@ mount a persistent disk at `/data`, and run **a single instance** (sessions are 
 ### Without Docker
 
 ```bash
-npm ci
-npm run build
+pnpm install --frozen-lockfile
+pnpm build
 PROBLEMS_CSV=/var/lib/outing-word/problems.csv node .next/standalone/server.js
 ```
 
