@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* Card-table felt palette. Light values first, dark values redefine the same tokens. */
+:root {
+  --felt: #1f5c4d;
+  --felt-deep: #164538;
+  --card: #fbf8f1;
+  --ink: #1d2422;
+  --muted: #6b7a75;
+  --red: #d2453a;
+  --red-deep: #b9372d;
+  --gold: #e9b949;
+  --gold-hi: #f2c85e;
+  --line: rgb(255 255 255 / 0.18);
+  --on-felt: #eef5f2;
+  --on-felt-soft: rgb(238 245 242 / 0.72);
+  --row: rgb(0 0 0 / 0.14);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --felt: #11342c;
+    --felt-deep: #0b241e;
+    --card: #f1ece1;
+    --muted: #66736e;
+    --line: rgb(255 255 255 / 0.12);
+    --on-felt: #dfeae6;
+    --on-felt-soft: rgb(223 234 230 / 0.65);
+    --row: rgb(0 0 0 / 0.22);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-felt: var(--felt);
+  --color-felt-deep: var(--felt-deep);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-red: var(--red);
+  --color-red-deep: var(--red-deep);
+  --color-gold: var(--gold);
+  --color-gold-hi: var(--gold-hi);
+  --color-line: var(--line);
+  --color-on-felt: var(--on-felt);
+  --color-on-felt-soft: var(--on-felt-soft);
+  --color-row: var(--row);
+  --font-display: var(--font-bricolage), var(--font-thai), "Avenir Next", system-ui, sans-serif;
+  --font-puzzle: var(--font-thai), "Thonburi", "Leelawadee UI", sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --animate-pulse-num: pulse-num 0.6s ease-in-out 3;
+}
+
+@keyframes pulse-num {
+  50% { transform: scale(1.18); }
+}
+
+html, body { height: 100%; }
+
+body {
+  background: radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-deep) 100%) fixed, var(--felt-deep);
+  color: var(--on-felt);
+  font-family: var(--font-display);
+}
+
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation: none !important; }
+}

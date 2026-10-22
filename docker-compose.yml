@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    image: outing-word-flip
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - problems:/data
+
+volumes:
+  problems:
