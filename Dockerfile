@@ -14,7 +14,8 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm run build
+# git doesn't keep empty folders, so public/ may be missing from a fresh clone
+RUN mkdir -p public && pnpm run build
 
 FROM node:22-alpine AS run
 WORKDIR /app
