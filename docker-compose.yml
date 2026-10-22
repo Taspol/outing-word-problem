@@ -4,7 +4,8 @@ services:
     image: outing-word-flip
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # host port (change with HOST_PORT=...) → the app's port 3000 inside the container
+      - "${HOST_PORT:-3010}:3000"
     volumes:
       - problems:/data
 

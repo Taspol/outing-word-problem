@@ -32,7 +32,7 @@ Node host with a persistent disk.
 ### Docker (recommended)
 
 ```bash
-docker compose up -d --build    # http://<server>:3000
+docker compose up -d --build    # http://<server>:3010
 ```
 
 The puzzle list lives in the `problems` volume at `/data/problems.csv` and survives rebuilds.
@@ -58,6 +58,7 @@ Copy `.next/static` to `.next/standalone/.next/static`, and `public` and `data` 
 | ---------------- | -------------------- | ---------------------------------------------------------- |
 | `PROBLEMS_CSV`   | `data/problems.csv`  | Where the puzzle list is saved.                            |
 | `PORT`           | `3000`               | Port the server listens on.                                |
+| `HOST_PORT`      | `3010`               | Port on the server Docker Compose publishes the app on.    |
 
 There is no login: anyone with the link can host a game and edit the puzzle list. Session codes are
 random and expire 12 hours after the last activity.
@@ -68,7 +69,7 @@ Live updates use Server-Sent Events. With nginx, turn off buffering for them:
 
 ```nginx
 location /api/session/ {
-    proxy_pass http://127.0.0.1:3000;
+    proxy_pass http://127.0.0.1:3010;
     proxy_buffering off;
     proxy_read_timeout 1h;
 }
