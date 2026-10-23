@@ -3,7 +3,7 @@
 A Thai word game for team outings: **ตอบให้ได้ 5 ข้อ ใน 30 วิ** (answer 5 in 30 seconds). Each card shows a
 letter pattern with blanks (e.g. `ย _ _ ย _ _`). The host reads the clue from their phone and the team shouts the
 word. No score is kept: the operator clicks the card once to show its answer and again for the next card, and clicks
-**Complete** when the team is done. The round also ends when time runs out; the last card stays up with its answer. Round time and the number in the title are adjustable.
+**Complete** when the team is done. The round also ends when time runs out, and then the last card shows its answer. Round time and the number in the title are adjustable.
 
 - **Play** — Begin a session, scan the QR on the host's phone, then **Start round**. During a round: click the card,
   **Show answer / Next** or `Space` to show the answer and then the next card, **Complete** or `C` to finish, `P` pause,

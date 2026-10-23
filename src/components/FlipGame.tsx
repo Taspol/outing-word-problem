@@ -9,7 +9,7 @@ import QrModal from "./QrModal";
 
 // A round: "ตอบให้ได้ 5 ข้อ ใน 30 วิ". One clock runs for the whole round. No score is kept: the operator clicks the
 // card once to show its answer and again for the next card, and clicks Complete when the team is done. The round
-// also ends when time runs out; either way the last card stays up with its answer.
+// also ends when time runs out. Either way the last card stays up; time-up also shows its answer.
 type Settings = { seconds: number; target: number; sound: boolean };
 type Phase = SessionState["phase"];
 
@@ -138,7 +138,8 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
       setRunning(false);
       setElapsedBefore(at);
       setCards(finalCards);
-      setRevealed(true); // the last card stays on screen, now with its answer
+      // the last card stays on screen; time-up also shows its answer, Complete leaves it as it was
+      if (why === "time") setRevealed(true);
       setOutcome(why);
       setPhase("over");
       if (why === "complete") {
