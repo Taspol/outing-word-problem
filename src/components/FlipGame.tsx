@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { hintSlots } from "@/lib/text";
+import { hintSlots, visualLength } from "@/lib/text";
 import HintText from "./HintText";
 import type { Problem } from "@/lib/types";
 import type { RoundCard, SessionState } from "@/lib/sessionTypes";
 import QrModal from "./QrModal";
 
 // A round: "ตอบให้ได้ 5 ข้อ ใน 30 วิ". One clock runs for the whole round. No score is kept: the operator clicks the
-// card (or Next) to move on, and clicks Complete when the team is done. The round also ends when time runs out.
+// card once to show its answer and again for the next card, and clicks Complete when the team is done. The round
+// also ends when time runs out; either way the last card stays up with its answer.
 type Settings = { seconds: number; target: number; sound: boolean };
 type Phase = SessionState["phase"];
 
@@ -32,6 +33,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
   const [current, setCurrent] = useState<Problem | null>(null);
   const [cards, setCards] = useState<RoundCard[]>([]);
   const [outcome, setOutcome] = useState<SessionState["outcome"]>(null);
+  const [revealed, setRevealed] = useState(false);
   const [status, setStatus] = useState({ title: "Ready", sub: "Press Start round when the team is set" });
 
   // round clock
@@ -136,7 +138,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
       setRunning(false);
       setElapsedBefore(at);
       setCards(finalCards);
-      setCurrent(null);
+      setRevealed(true); // the last card stays on screen, now with its answer
       setOutcome(why);
       setPhase("over");
       if (why === "complete") {
@@ -166,6 +168,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
     const t = performance.now();
     setSeen(nextSeen);
     setCurrent(pick);
+    setRevealed(false);
     setCards([]);
     setOutcome(null);
     setRound((r) => r + 1);
@@ -174,18 +177,25 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
     setStartedAt(t);
     setNow(t);
     setRunning(true);
-    setStatus({ title: "Go!", sub: "Click the card for the next one" });
+    setStatus({ title: "Go!", sub: "Click the card to show the answer" });
   }, [problems.length, playing, settings.sound, pickNext, seen]);
 
-  /** The operator moves on to a new card; the one on screen joins this round's list. */
+  /** One click shows the answer of the card on screen; the next click moves on to a new card. */
   const next = useCallback(() => {
     if (!playing || !running || !current) return;
+    if (!revealed) {
+      setRevealed(true);
+      setStatus({ title: "Answer", sub: "Click the card for the next one" });
+      return;
+    }
     const nextCards = [...cards, toCard(current)];
     const { pick, seen: nextSeen } = pickNext(seen, nextCards.map((c) => c.position));
     setCards(nextCards);
     setSeen(nextSeen);
     setCurrent(pick);
-  }, [playing, running, current, cards, toCard, pickNext, seen]);
+    setRevealed(false);
+    setStatus({ title: "Go!", sub: "Click the card to show the answer" });
+  }, [playing, running, current, revealed, cards, toCard, pickNext, seen]);
 
   /** The operator ends the round when the team is done. */
   const complete = useCallback(() => {
@@ -204,9 +214,11 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
       setStartedAt(t);
       setNow(t);
       setRunning(true);
-      setStatus({ title: "Go!", sub: "Click the card for the next one" });
+      setStatus(revealed
+        ? { title: "Answer", sub: "Click the card for the next one" }
+        : { title: "Go!", sub: "Click the card to show the answer" });
     }
-  }, [playing, running, elapsed]);
+  }, [playing, running, elapsed, revealed]);
 
   const reset = () => {
     setSeen(new Set());
@@ -302,6 +314,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         duration,
         target,
         cards,
+        revealed,
         outcome,
         left,
         total: problems.length,
@@ -318,7 +331,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         if (res.ok) setViewers((await res.json()).viewers ?? 0);
       } catch {}
     },
-    [session, phase, round, current, position, running, elapsedBefore, startedAt, duration, target, cards, outcome, left, problems.length, status],
+    [session, phase, round, current, position, running, elapsedBefore, startedAt, duration, target, cards, revealed, outcome, left, problems.length, status],
   );
 
   // Send on every real change (new card, pause, round over…), never on the 100 ms clock tick.
@@ -346,6 +359,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
     setRunning(false);
     setElapsedBefore(0);
     setCurrent(null);
+    setRevealed(false);
     setCards([]);
     setOutcome(null);
     setRound(0);
@@ -370,6 +384,9 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
   const corner = "absolute text-center font-mono text-[clamp(1rem,3.2cqw,2rem)] leading-tight text-red";
 
   // each slot of the pattern is a letter or blank (~0.65em) plus a 0.2em gap
+  const answerSize = current
+    ? `${Math.max(5, Math.min(12, 84 / (Math.max(visualLength(current.answer || "ไม่มีคำตอบ"), 1) * 0.62))).toFixed(2)}cqw`
+    : "";
   const hintSize = current ? `${Math.max(6, Math.min(18, 84 / (Math.max(hintSlots(current.hint).length, 1) * 0.85))).toFixed(2)}cqw` : "";
 
   const cardSize = presenting
@@ -414,7 +431,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
       <div
         role="button"
         tabIndex={0}
-        aria-label={playing ? "Next card" : "Start the round"}
+        aria-label={playing ? (revealed ? "Next card" : "Show the answer") : "Start the round"}
         onClick={playing ? next : startRound}
         className={`@container aspect-[4/3] w-full ${cardSize} min-w-[min(100%,320px)] perspective-[1400px] sm:aspect-[5/3.4] ${playing && !running ? "" : "cursor-pointer"}`}
       >
@@ -445,13 +462,22 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
                     <small className="block text-[.55em] text-muted">puzzle</small>
                   </div>
                 ))}
-                {/* keyed by the card count so each new card slides in */}
-                <div key={cards.length} className="animate-card-in">
+                {/* keyed by round and card so each new card slides in (cards don't repeat within a round) */}
+                <div key={`${round}-${position}`} className="flex animate-card-in flex-col items-center gap-[2.4cqw] text-center">
                   <HintText hint={current.hint} style={{ fontSize: hintSize }} className="font-puzzle leading-[1.35] font-extrabold" />
+                  {/* the answer's space is kept while hidden so the pattern doesn't move when it appears */}
+                  <div
+                    aria-live="polite"
+                    style={{ fontSize: answerSize }}
+                    className={`font-puzzle leading-[1.3] font-extrabold text-red transition duration-300 ${
+                      revealed ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+                    }`}
+                  >
+                    {revealed ? current.answer || <span className="text-muted">ไม่มีคำตอบ</span> : "\u00a0"}
+                  </div>
                 </div>
               </>
             )}
-            {phase === "over" && <RoundSummary cards={cards} outcome={outcome} seconds={elapsedBefore} />}
           </div>
         </div>
       </div>
@@ -498,7 +524,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         {playing ? (
           <>
             <button className={btn} onClick={next} disabled={!running}>
-              Next →
+              {revealed ? "Next →" : "Show answer"}
             </button>
             <button className={`${gold} px-8`} onClick={complete}>
               ✓ Complete
@@ -577,7 +603,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         </label>
       </div>
       <p hidden={presenting} className="text-center text-xs text-on-felt-soft">
-        <Kbd>Space</Kbd> start round / next card · <Kbd>C</Kbd> complete · <Kbd>P</Kbd> pause · <Kbd>F</Kbd> full screen
+        <Kbd>Space</Kbd> start round / show answer, then next card · <Kbd>C</Kbd> complete · <Kbd>P</Kbd> pause · <Kbd>F</Kbd> full screen
       </p>
       {qrOpen && session && (
         <QrModal
@@ -590,35 +616,6 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         />
       )}
     </section>
-  );
-}
-
-/** The card face after a round: how it ended, then every card of the round with its answer. */
-function RoundSummary({ cards, outcome, seconds }: { cards: RoundCard[]; outcome: SessionState["outcome"]; seconds: number }) {
-  const shown = cards.slice(0, 12);
-  return (
-    <div className="flex h-full w-full flex-col items-center gap-[2cqw] overflow-hidden text-center">
-      <p className={`font-puzzle text-[6cqw] leading-tight font-extrabold ${outcome === "complete" ? "text-[#2f8a5c]" : "text-red"}`}>
-        {outcome === "complete" ? "เสร็จแล้ว! 🎉" : "หมดเวลา!"}
-      </p>
-      {outcome === "complete" && (
-        <p className="font-mono text-[9cqw] leading-none tabular-nums">
-          {seconds.toFixed(1)}
-          <span className="text-[.5em] text-muted"> s</span>
-        </p>
-      )}
-      {shown.length > 0 && (
-        <ol className="grid w-full grid-cols-2 gap-x-[3cqw] gap-y-[.8cqw] border-t border-ink/10 pt-[2cqw] text-left text-[2.6cqw]">
-          {shown.map((c, i) => (
-            <li key={i} className="flex min-w-0 items-baseline gap-[1.2cqw]">
-              <HintText hint={c.hint} className="shrink-0 font-puzzle font-extrabold" />
-              <span className="min-w-0 truncate font-puzzle font-semibold text-red">{c.answer || "—"}</span>
-            </li>
-          ))}
-          {cards.length > shown.length && <li className="text-muted">…and {cards.length - shown.length} more</li>}
-        </ol>
-      )}
-    </div>
   );
 }
 

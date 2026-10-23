@@ -100,7 +100,16 @@ export default function Monitor({ id }: { id: string }) {
             </div>
           </div>
 
-          {playing && st.problem ? (
+          {st.phase === "over" && (
+            <div className="w-full rounded-[18px] bg-card p-4 text-center text-ink shadow-[0_14px_34px_rgba(0,0,0,.3)]">
+              <p className={`font-puzzle text-2xl font-extrabold ${st.outcome === "complete" ? "text-[#2f8a5c]" : "text-red"}`}>
+                {st.outcome === "complete" ? "เสร็จแล้ว! 🎉" : "หมดเวลา!"}
+              </p>
+              <p className="text-sm text-muted">Round {st.round} is over. The host can start the next round.</p>
+            </div>
+          )}
+
+          {st.problem && st.phase !== "ready" && (
             <div className="w-full rounded-[18px] bg-card p-5 text-ink shadow-[0_14px_34px_rgba(0,0,0,.3)] @container sm:p-7">
               <div className="flex items-baseline justify-between font-mono text-red">
                 <span className="text-lg">#{st.position}</span>
@@ -120,21 +129,21 @@ export default function Monitor({ id }: { id: string }) {
                 </>
               )}
               <div className="mt-4 border-t border-ink/10 pt-4">
-                <p className="text-xs font-semibold tracking-[.08em] text-muted uppercase">Answer · hidden from players</p>
+                <p className="flex items-center justify-between gap-2 text-xs font-semibold tracking-[.08em] text-muted uppercase">
+                  Answer
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs tracking-normal normal-case ${
+                      st.revealed ? "bg-ink text-card" : "bg-[#fbecc4] text-[#8a5a00]"
+                    }`}
+                  >
+                    {st.revealed ? "Shown to players" : "Hidden from players"}
+                  </span>
+                </p>
                 <p className="font-puzzle text-[clamp(2rem,12cqw,4.5rem)] leading-[1.3] font-extrabold text-red">
                   {st.problem.answer || <span className="text-[.5em] text-muted">No answer saved</span>}
                 </p>
               </div>
             </div>
-          ) : (
-            st.phase === "over" && (
-              <div className="w-full rounded-[18px] bg-card p-5 text-center text-ink shadow-[0_14px_34px_rgba(0,0,0,.3)]">
-                <p className={`font-puzzle text-3xl font-extrabold ${st.outcome === "complete" ? "text-[#2f8a5c]" : "text-red"}`}>
-                  {st.outcome === "complete" ? "เสร็จแล้ว! 🎉" : "หมดเวลา!"}
-                </p>
-                <p className="mt-1 text-muted">Round {st.round} is over. The host can start the next round.</p>
-              </div>
-            )
           )}
 
           {cards.length > 0 && (

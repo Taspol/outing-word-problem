@@ -2,12 +2,12 @@
 
 A Thai word game for team outings: **ตอบให้ได้ 5 ข้อ ใน 30 วิ** (answer 5 in 30 seconds). Each card shows a
 letter pattern with blanks (e.g. `ย _ _ ย _ _`). The host reads the clue from their phone and the team shouts the
-word. No score is kept: the operator clicks the card to move on, and clicks **Complete** when the team is done. The
-round also ends when time runs out. Round time and the number in the title are adjustable.
+word. No score is kept: the operator clicks the card once to show its answer and again for the next card, and clicks
+**Complete** when the team is done. The round also ends when time runs out; the last card stays up with its answer. Round time and the number in the title are adjustable.
 
 - **Play** — Begin a session, scan the QR on the host's phone, then **Start round**. During a round: click the card,
-  **Next** or `Space` for the next card, **Complete** or `C` to finish, `P` pause, `F` full screen. After the round the
-  card shows every card of the round with its answer; `Space` starts the next round. Cards don't repeat until the
+  **Show answer / Next** or `Space` to show the answer and then the next card, **Complete** or `C` to finish, `P` pause,
+  `F` full screen. **Next round** (or `Space`) starts another. Cards don't repeat until the
   whole deck has been used.
 - **Puzzles** — Edit, add or delete puzzles (pattern, clue, answer). Use `_` for each hidden letter.
   **Download CSV** exports the list (`no.,Hint,Clue,Answer`). **Upload CSV** replaces the whole list from a file

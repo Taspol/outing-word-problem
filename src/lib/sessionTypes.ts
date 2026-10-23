@@ -13,7 +13,8 @@ export type SessionState = {
   elapsed: number; // seconds on the round clock when this state was sent
   duration: number;
   target: number; // how many to answer, shown in the round's title only
-  cards: RoundCard[]; // this round's cards so far, oldest first (the one on screen is `problem`)
+  cards: RoundCard[]; // this round's earlier cards, oldest first (the one on screen is `problem`; it joins at round end)
+  revealed: boolean; // the answer of `problem` is showing on the main screen
   outcome: "complete" | "time" | null; // why the round ended
   left: number; // cards not yet drawn from the deck
   total: number;
@@ -39,6 +40,7 @@ export const EMPTY_STATE: SessionState = {
   duration: 30,
   target: 5,
   cards: [],
+  revealed: false,
   outcome: null,
   left: 0,
   total: 0,
