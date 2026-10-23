@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { SessionEvent } from "@/lib/sessionTypes";
+import type { CardResult, SessionEvent } from "@/lib/sessionTypes";
 import HintText from "./HintText";
 
 type Conn = "connecting" | "live" | "lost" | "missing";
@@ -65,90 +65,107 @@ export default function Monitor({ id }: { id: string }) {
   let elapsed = st?.elapsed ?? 0;
   if (st?.running && event) elapsed += Math.max(0, now + offset.current - event.receivedAt) / 1000;
   const dur = st?.duration ?? 30;
-  const left = Math.max(0, dur - elapsed);
-  const shown = st?.mode === "up" ? Math.floor(elapsed) : Math.ceil(left);
-  const frac = st?.mode === "up" ? Math.min(1, elapsed / dur) : left / dur;
-  const timeUp = st?.done || (st?.mode !== "up" && st?.running && left <= 0);
-  const warn = st?.mode === "up" ? elapsed >= dur : left <= 5 && left > 0;
+  const playing = st?.phase === "playing";
+  const left = st?.phase === "ready" ? dur : Math.max(0, dur - elapsed);
+  const shown = Math.ceil(left);
+  const timeUp = (st?.phase === "over" && st.outcome === "time") || (playing && st?.running && left <= 0);
+  const warn = playing && left <= 5;
+  const cards = st?.cards ?? [];
+  const passed = cards.filter((c) => c.result === "pass").length;
 
   return (
     <Shell id={id} conn={conn} viewers={event?.viewers}>
-      {!st?.problem ? (
+      {!st || st.round === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
           <p className="text-2xl font-extrabold">Connected</p>
-          <p className="text-on-felt-soft">The puzzle and answer will show here as soon as the host draws a card.</p>
+          <p className="text-on-felt-soft">The puzzle, clue and answer will show here as soon as the host starts a round.</p>
         </div>
       ) : (
         <>
-          <div className="w-full rounded-[18px] bg-card p-5 text-ink shadow-[0_14px_34px_rgba(0,0,0,.3)] @container sm:p-7">
-            <div className="flex items-baseline justify-between font-mono text-red">
-              <span className="text-lg">#{st.position}</span>
-              <span className="text-sm text-muted tabular-nums">
-                card {st.drawn} of {st.total}
-              </span>
+          {/* round clock and score */}
+          <div className="flex w-full items-center gap-4">
+            <Ring frac={left / dur} warn={!!warn || !!timeUp} />
+            <div className="min-w-0 flex-1">
+              <p className={`font-mono text-5xl tabular-nums ${timeUp ? "text-red" : ""}`} aria-label={`${shown} seconds left`}>
+                {shown}s
+              </p>
+              <p className="text-on-felt-soft">
+                <strong className="text-on-felt">{st.status.title}</strong> · {st.status.sub}
+              </p>
             </div>
-            <p className="mt-1 text-xs font-semibold tracking-[.08em] text-muted uppercase">Puzzle</p>
-            <HintText
-              hint={st.problem.hint}
-              className="font-puzzle text-[clamp(1.8rem,10cqw,3.6rem)] leading-[1.35] font-extrabold"
-            />
-            {st.problem.clue && (
-              <>
-                <p className="mt-3 text-xs font-semibold tracking-[.08em] text-muted uppercase">Clue · read it out</p>
-                <p className="font-puzzle text-[clamp(1.2rem,5.6cqw,1.7rem)] leading-snug font-semibold">{st.problem.clue}</p>
-              </>
-            )}
-            <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-ink/10 pt-4">
-              <div>
-                <p className="text-xs font-semibold tracking-[.08em] text-muted uppercase">Answer</p>
+            <div className="shrink-0 text-right">
+              <p className="font-mono text-4xl tabular-nums">
+                {st.correct}
+                <span className="text-xl text-on-felt-soft">/{st.target}</span>
+              </p>
+              <p className="text-sm text-on-felt-soft">
+                round {st.round} · {passed} passed
+              </p>
+            </div>
+          </div>
+
+          {playing && st.problem ? (
+            <div className="w-full rounded-[18px] bg-card p-5 text-ink shadow-[0_14px_34px_rgba(0,0,0,.3)] @container sm:p-7">
+              <div className="flex items-baseline justify-between font-mono text-red">
+                <span className="text-lg">#{st.position}</span>
+                <span className="text-sm text-muted tabular-nums">
+                  {st.left} of {st.total} left in the deck
+                </span>
+              </div>
+              <p className="mt-1 text-xs font-semibold tracking-[.08em] text-muted uppercase">Puzzle</p>
+              <HintText
+                hint={st.problem.hint}
+                className="font-puzzle text-[clamp(1.8rem,10cqw,3.6rem)] leading-[1.35] font-extrabold"
+              />
+              {st.problem.clue && (
+                <>
+                  <p className="mt-3 text-xs font-semibold tracking-[.08em] text-muted uppercase">Clue · read it out</p>
+                  <p className="font-puzzle text-[clamp(1.2rem,5.6cqw,1.7rem)] leading-snug font-semibold">{st.problem.clue}</p>
+                </>
+              )}
+              <div className="mt-4 border-t border-ink/10 pt-4">
+                <p className="text-xs font-semibold tracking-[.08em] text-muted uppercase">Answer · hidden from players</p>
                 <p className="font-puzzle text-[clamp(2rem,12cqw,4.5rem)] leading-[1.3] font-extrabold text-red">
                   {st.problem.answer || <span className="text-[.5em] text-muted">No answer saved</span>}
                 </p>
               </div>
-              <span
-                className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                  st.revealed ? "bg-ink text-card" : "bg-[#fbecc4] text-[#8a5a00]"
-                }`}
-              >
-                {st.revealed ? "Shown to players" : "Hidden from players"}
-              </span>
             </div>
-          </div>
+          ) : (
+            st.phase === "over" && (
+              <div className="w-full rounded-[18px] bg-card p-5 text-center text-ink shadow-[0_14px_34px_rgba(0,0,0,.3)]">
+                <p className={`font-puzzle text-3xl font-extrabold ${st.outcome === "goal" ? "text-[#2f8a5c]" : "text-red"}`}>
+                  {st.outcome === "goal" ? "ผ่าน! 🎉" : "หมดเวลา!"}
+                </p>
+                <p className="mt-1 text-muted">Round {st.round} is over. The host can start the next round.</p>
+              </div>
+            )
+          )}
 
-          <div className="flex w-full items-center gap-4">
-            <Ring frac={frac} warn={!!warn || !!timeUp} />
-            <div className="min-w-0">
-              <p
-                className={`font-mono text-5xl tabular-nums ${timeUp ? "text-red" : ""}`}
-                aria-label={`${shown} seconds`}
-              >
-                {shown}s
-              </p>
-              <p className="text-on-felt-soft">
-                <strong className="text-on-felt">{timeUp ? "Time's up!" : st.status.title}</strong> · {st.status.sub}
-              </p>
+          {cards.length > 0 && (
+            <div className="w-full">
+              <p className="mb-2 text-xs font-semibold tracking-[.08em] text-on-felt-soft uppercase">This round</p>
+              <ol className="divide-y divide-line rounded-xl bg-felt-deep text-sm tabular-nums">
+                {[...cards].reverse().map((c, i) => (
+                  <li key={i} className="flex items-baseline justify-between gap-3 px-3 py-2">
+                    <span className={`w-5 shrink-0 text-center font-bold ${RESULT_CLASS[c.result]}`} aria-label={RESULT_LABEL[c.result]}>
+                      {RESULT_SIGN[c.result]}
+                    </span>
+                    <HintText hint={c.hint} className="min-w-0 flex-1 overflow-hidden font-puzzle" />
+                    <span className="font-puzzle font-semibold text-gold">{c.answer || "—"}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
-          </div>
+          )}
         </>
-      )}
-
-      {!!st?.history.length && (
-        <div className="w-full">
-          <p className="mb-2 text-xs font-semibold tracking-[.08em] text-on-felt-soft uppercase">Drawn so far</p>
-          <ol className="divide-y divide-line rounded-xl bg-felt-deep text-sm tabular-nums [--hint-bg:var(--felt-deep)]">
-            {[...st.history].reverse().map((h, i) => (
-              <li key={i} className="flex justify-between gap-3 px-3 py-2">
-                <span className="font-mono text-on-felt-soft">#{h.position}</span>
-                <HintText hint={h.hint} className="min-w-0 flex-1 overflow-hidden font-puzzle" />
-                <span className="font-puzzle font-semibold text-gold">{h.answer || "—"}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
       )}
     </Shell>
   );
 }
+
+const RESULT_SIGN: Record<CardResult, string> = { correct: "✓", pass: "–", missed: "⏱" };
+const RESULT_LABEL: Record<CardResult, string> = { correct: "correct", pass: "passed", missed: "time ran out" };
+const RESULT_CLASS: Record<CardResult, string> = { correct: "text-[#5fd39a]", pass: "text-on-felt-soft", missed: "text-[#ffb4ab]" };
 
 function Shell({
   id,

@@ -1,16 +1,19 @@
 # Outing Word Flip
 
-A flip-card Thai word game for team outings. Each card shows a letter pattern with blanks (e.g. `ย _ _ ย _ _`)
-and a clue; the host draws a random card, a timer counts down, and one tap shows the answer. Phones that scan
-the session QR code follow each puzzle and its answer live.
+A Thai word game for team outings: **ตอบให้ได้ 5 ข้อ ใน 30 วิ** (get 5 right in 30 seconds). Each card shows a
+letter pattern with blanks (e.g. `ย _ _ ย _ _`). The host reads the clue from their phone, the team shouts the word,
+and the host marks it Correct or Pass; the next card appears at once. The round ends at 5 correct or when time
+runs out. Round time and the number to win are adjustable.
 
-- **Play** — Begin a session, scan the QR on the host's phone, then tap: draw → show answer → next card.
-  `Space` advances, `P` pauses, `F` toggles full screen.
+- **Play** — Begin a session, scan the QR on the host's phone, then **Start round**. During a round:
+  `Space` correct, `X` pass, `P` pause, `F` full screen. After the round the card shows the score and every card
+  with its answer; `Space` starts the next round. Cards don't repeat until the whole deck has been used.
 - **Puzzles** — Edit, add or delete puzzles (pattern, clue, answer). Use `_` for each hidden letter.
   **Download CSV** exports the list (`no.,Hint,Clue,Answer`). **Upload CSV** replaces the whole list from a file
   (the same layout, any file with Hint/Pattern, Clue and Answer columns, or just those three columns with no header).
   You see the puzzles and any unusable rows before anything is replaced.
-- **Monitor** (`/monitor/<code>`) — Live puzzle, answer, timer and history for one session.
+- **Monitor** (`/monitor/<code>`) — For the host: the clue to read out, the answer, the round clock, the score
+  and this round's cards, live. The clue and answer are never shown on the main screen during a round.
 
 ## Run locally
 

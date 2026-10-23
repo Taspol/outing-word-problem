@@ -1,19 +1,25 @@
 import type { Problem } from "./types";
 
+/** How a card ended in a round: answered, passed, or still up when time ran out. */
+export type CardResult = "correct" | "pass" | "missed";
+export type RoundCard = { position: number; hint: string; answer: string; result: CardResult };
+
 /** What the game broadcasts to monitors. */
 export type SessionState = {
+  phase: "ready" | "playing" | "over";
+  round: number; // 1 for the first round, 0 before any round
   problem: Problem | null;
   position: number; // the problem's row number in the list
-  revealed: boolean;
   running: boolean;
-  done: boolean;
-  elapsed: number; // seconds on the clock when this state was sent
+  elapsed: number; // seconds on the round clock when this state was sent
   duration: number;
-  mode: "down" | "up";
-  drawn: number;
+  target: number; // correct answers needed to win the round
+  correct: number;
+  cards: RoundCard[]; // this round's cards so far, oldest first
+  outcome: "goal" | "time" | null; // why the round ended
+  left: number; // cards not yet drawn from the deck
   total: number;
   status: { title: string; sub: string };
-  history: { position: number; hint: string; answer: string }[];
   ended: boolean;
 };
 
@@ -26,17 +32,19 @@ export type SessionEvent = {
 };
 
 export const EMPTY_STATE: SessionState = {
+  phase: "ready",
+  round: 0,
   problem: null,
   position: 0,
-  revealed: false,
   running: false,
-  done: false,
   elapsed: 0,
   duration: 30,
-  mode: "down",
-  drawn: 0,
+  target: 5,
+  correct: 0,
+  cards: [],
+  outcome: null,
+  left: 0,
   total: 0,
-  status: { title: "Waiting", sub: "The host hasn't drawn a card yet" },
-  history: [],
+  status: { title: "Waiting", sub: "The host hasn't started a round yet" },
   ended: false,
 };
