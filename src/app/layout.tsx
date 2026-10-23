@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, DM_Mono, Noto_Sans_Thai } from "next/font/google";
+import { Bricolage_Grotesque, DM_Mono, IBM_Plex_Sans_Thai } from "next/font/google";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -8,11 +8,11 @@ const bricolage = Bricolage_Grotesque({
   weight: ["500", "600", "800"],
 });
 
-// Bricolage has no Thai letters, so Thai text falls through to this one.
-const notoThai = Noto_Sans_Thai({
+// Bricolage has no Thai letters, so Thai text falls through to this one. Plex Thai goes up to bold (700).
+const plexThai = IBM_Plex_Sans_Thai({
   variable: "--font-thai",
-  subsets: ["thai"],
-  weight: ["500", "600", "800"],
+  subsets: ["thai", "latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const dmMono = DM_Mono({
@@ -33,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th">
-      <body className={`${bricolage.variable} ${notoThai.variable} ${dmMono.variable} antialiased`}>{children}</body>
+      <body className={`${bricolage.variable} ${plexThai.variable} ${dmMono.variable} antialiased`}>{children}</body>
     </html>
   );
 }

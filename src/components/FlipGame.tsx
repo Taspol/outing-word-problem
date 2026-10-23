@@ -411,7 +411,8 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
           <p className="text-xs font-semibold tracking-[.08em] text-on-felt-soft uppercase">
             {problems.length} cards · {duration} s per round
           </p>
-          <h2 className="max-w-[18ch] text-[clamp(1.8rem,5vw,3.2rem)] leading-[1.05] font-extrabold tracking-tight text-balance">
+          {/* Thai title: the Thai font throughout (digits too), and room above and below for Thai vowel marks */}
+          <h2 className="max-w-[18ch] font-puzzle text-[clamp(1.8rem,5vw,3.2rem)] leading-[1.3] font-bold text-balance">
             ตอบให้ได้ {target} ข้อ ใน {duration} วิ
           </h2>
           <p className="max-w-[44ch] text-on-felt-soft">
