@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CardResult, SessionEvent } from "@/lib/sessionTypes";
+import type { SessionEvent } from "@/lib/sessionTypes";
 import HintText from "./HintText";
 
 type Conn = "connecting" | "live" | "lost" | "missing";
@@ -71,7 +71,6 @@ export default function Monitor({ id }: { id: string }) {
   const timeUp = (st?.phase === "over" && st.outcome === "time") || (playing && st?.running && left <= 0);
   const warn = playing && left <= 5;
   const cards = st?.cards ?? [];
-  const passed = cards.filter((c) => c.result === "pass").length;
 
   return (
     <Shell id={id} conn={conn} viewers={event?.viewers}>
@@ -95,12 +94,9 @@ export default function Monitor({ id }: { id: string }) {
             </div>
             <div className="shrink-0 text-right">
               <p className="font-mono text-4xl tabular-nums">
-                {st.correct}
-                <span className="text-xl text-on-felt-soft">/{st.target}</span>
+                {cards.length + (playing ? 1 : 0)}
               </p>
-              <p className="text-sm text-on-felt-soft">
-                round {st.round} · {passed} passed
-              </p>
+              <p className="text-sm text-on-felt-soft">round {st.round} · card</p>
             </div>
           </div>
 
@@ -133,8 +129,8 @@ export default function Monitor({ id }: { id: string }) {
           ) : (
             st.phase === "over" && (
               <div className="w-full rounded-[18px] bg-card p-5 text-center text-ink shadow-[0_14px_34px_rgba(0,0,0,.3)]">
-                <p className={`font-puzzle text-3xl font-extrabold ${st.outcome === "goal" ? "text-[#2f8a5c]" : "text-red"}`}>
-                  {st.outcome === "goal" ? "ผ่าน! 🎉" : "หมดเวลา!"}
+                <p className={`font-puzzle text-3xl font-extrabold ${st.outcome === "complete" ? "text-[#2f8a5c]" : "text-red"}`}>
+                  {st.outcome === "complete" ? "เสร็จแล้ว! 🎉" : "หมดเวลา!"}
                 </p>
                 <p className="mt-1 text-muted">Round {st.round} is over. The host can start the next round.</p>
               </div>
@@ -143,13 +139,11 @@ export default function Monitor({ id }: { id: string }) {
 
           {cards.length > 0 && (
             <div className="w-full">
-              <p className="mb-2 text-xs font-semibold tracking-[.08em] text-on-felt-soft uppercase">This round</p>
+              <p className="mb-2 text-xs font-semibold tracking-[.08em] text-on-felt-soft uppercase">{playing ? "Earlier this round" : "This round"}</p>
               <ol className="divide-y divide-line rounded-xl bg-felt-deep text-sm tabular-nums">
                 {[...cards].reverse().map((c, i) => (
                   <li key={i} className="flex items-baseline justify-between gap-3 px-3 py-2">
-                    <span className={`w-5 shrink-0 text-center font-bold ${RESULT_CLASS[c.result]}`} aria-label={RESULT_LABEL[c.result]}>
-                      {RESULT_SIGN[c.result]}
-                    </span>
+                    <span className="w-6 shrink-0 font-mono text-on-felt-soft">{cards.length - i}</span>
                     <HintText hint={c.hint} className="min-w-0 flex-1 overflow-hidden font-puzzle" />
                     <span className="font-puzzle font-semibold text-gold">{c.answer || "—"}</span>
                   </li>
@@ -162,10 +156,6 @@ export default function Monitor({ id }: { id: string }) {
     </Shell>
   );
 }
-
-const RESULT_SIGN: Record<CardResult, string> = { correct: "✓", pass: "–", missed: "⏱" };
-const RESULT_LABEL: Record<CardResult, string> = { correct: "correct", pass: "passed", missed: "time ran out" };
-const RESULT_CLASS: Record<CardResult, string> = { correct: "text-[#5fd39a]", pass: "text-on-felt-soft", missed: "text-[#ffb4ab]" };
 
 function Shell({
   id,

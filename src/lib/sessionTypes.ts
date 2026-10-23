@@ -1,8 +1,7 @@
 import type { Problem } from "./types";
 
-/** How a card ended in a round: answered, passed, or still up when time ran out. */
-export type CardResult = "correct" | "pass" | "missed";
-export type RoundCard = { position: number; hint: string; answer: string; result: CardResult };
+/** A card shown during a round (no score is kept: the operator just moves on). */
+export type RoundCard = { position: number; hint: string; answer: string };
 
 /** What the game broadcasts to monitors. */
 export type SessionState = {
@@ -13,10 +12,9 @@ export type SessionState = {
   running: boolean;
   elapsed: number; // seconds on the round clock when this state was sent
   duration: number;
-  target: number; // correct answers needed to win the round
-  correct: number;
-  cards: RoundCard[]; // this round's cards so far, oldest first
-  outcome: "goal" | "time" | null; // why the round ended
+  target: number; // how many to answer, shown in the round's title only
+  cards: RoundCard[]; // this round's cards so far, oldest first (the one on screen is `problem`)
+  outcome: "complete" | "time" | null; // why the round ended
   left: number; // cards not yet drawn from the deck
   total: number;
   status: { title: string; sub: string };
@@ -40,7 +38,6 @@ export const EMPTY_STATE: SessionState = {
   elapsed: 0,
   duration: 30,
   target: 5,
-  correct: 0,
   cards: [],
   outcome: null,
   left: 0,

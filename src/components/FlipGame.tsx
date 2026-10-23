@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { hintSlots } from "@/lib/text";
 import HintText from "./HintText";
 import type { Problem } from "@/lib/types";
-import type { CardResult, RoundCard, SessionState } from "@/lib/sessionTypes";
+import type { RoundCard, SessionState } from "@/lib/sessionTypes";
 import QrModal from "./QrModal";
 
-// A round: "get 5 right in 30 seconds". One clock runs for the whole round; the host marks each card Correct or
-// Pass and the next card appears at once. The round ends when the team reaches the target or time runs out.
+// A round: "ตอบให้ได้ 5 ข้อ ใน 30 วิ". One clock runs for the whole round. No score is kept: the operator clicks the
+// card (or Next) to move on, and clicks Complete when the team is done. The round also ends when time runs out.
 type Settings = { seconds: number; target: number; sound: boolean };
 type Phase = SessionState["phase"];
 
@@ -57,8 +57,6 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
   const duration = clampSeconds(settings.seconds);
   const target = clampTarget(settings.target);
   const elapsed = elapsedBefore + (running ? (now - startedAt) / 1000 : 0);
-  const correct = cards.filter((c) => c.result === "correct").length;
-  const passed = cards.filter((c) => c.result === "pass").length;
   const playing = phase === "playing";
 
   // load / save settings
@@ -113,7 +111,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
 
   const positionOf = useCallback((p: Problem) => problems.findIndex((q) => q.no === p.no) + 1 || p.no, [problems]);
   const toCard = useCallback(
-    (p: Problem, result: CardResult): RoundCard => ({ position: positionOf(p), hint: p.hint, answer: p.answer, result }),
+    (p: Problem): RoundCard => ({ position: positionOf(p), hint: p.hint, answer: p.answer }),
     [positionOf],
   );
 
@@ -134,29 +132,28 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
   );
 
   const finish = useCallback(
-    (why: "goal" | "time", finalCards: RoundCard[], at: number) => {
-      const got = finalCards.filter((c) => c.result === "correct").length;
+    (why: "complete" | "time", finalCards: RoundCard[], at: number) => {
       setRunning(false);
       setElapsedBefore(at);
       setCards(finalCards);
       setCurrent(null);
       setOutcome(why);
       setPhase("over");
-      if (why === "goal") {
-        setStatus({ title: "Goal reached!", sub: `${got} correct in ${at.toFixed(1)} s` });
+      if (why === "complete") {
+        setStatus({ title: "Complete!", sub: `Finished in ${at.toFixed(1)} s` });
         if (settings.sound) goalSound();
       } else {
-        setStatus({ title: "Time's up!", sub: `${got} of ${target} correct` });
+        setStatus({ title: "Time's up!", sub: "The round is over" });
         if (settings.sound) timeUpSound();
       }
     },
-    [settings.sound, target, goalSound, timeUpSound],
+    [settings.sound, goalSound, timeUpSound],
   );
 
   // time up
   useEffect(() => {
     if (running && playing && elapsed >= duration) {
-      finish("time", current ? [...cards, toCard(current, "missed")] : cards, duration);
+      finish("time", current ? [...cards, toCard(current)] : cards, duration);
     }
   }, [running, playing, elapsed, duration, current, cards, toCard, finish]);
 
@@ -177,25 +174,24 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
     setStartedAt(t);
     setNow(t);
     setRunning(true);
-    setStatus({ title: "Go!", sub: `Get ${target} right before time runs out` });
-  }, [problems.length, playing, settings.sound, pickNext, seen, target]);
+    setStatus({ title: "Go!", sub: "Click the card for the next one" });
+  }, [problems.length, playing, settings.sound, pickNext, seen]);
 
-  /** The host marks the card on screen; the next one appears straight away. */
-  const mark = useCallback(
-    (result: "correct" | "pass") => {
-      if (!playing || !running || !current) return;
-      const nextCards = [...cards, toCard(current, result)];
-      if (result === "correct" && nextCards.filter((c) => c.result === "correct").length >= target) {
-        finish("goal", nextCards, elapsed);
-        return;
-      }
-      const { pick, seen: nextSeen } = pickNext(seen, nextCards.map((c) => c.position));
-      setCards(nextCards);
-      setSeen(nextSeen);
-      setCurrent(pick);
-    },
-    [playing, running, current, cards, toCard, target, finish, elapsed, pickNext, seen],
-  );
+  /** The operator moves on to a new card; the one on screen joins this round's list. */
+  const next = useCallback(() => {
+    if (!playing || !running || !current) return;
+    const nextCards = [...cards, toCard(current)];
+    const { pick, seen: nextSeen } = pickNext(seen, nextCards.map((c) => c.position));
+    setCards(nextCards);
+    setSeen(nextSeen);
+    setCurrent(pick);
+  }, [playing, running, current, cards, toCard, pickNext, seen]);
+
+  /** The operator ends the round when the team is done. */
+  const complete = useCallback(() => {
+    if (!playing || !current) return;
+    finish("complete", [...cards, toCard(current)], elapsed);
+  }, [playing, current, cards, toCard, finish, elapsed]);
 
   const togglePause = useCallback(() => {
     if (!playing) return;
@@ -208,9 +204,9 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
       setStartedAt(t);
       setNow(t);
       setRunning(true);
-      setStatus({ title: "Go!", sub: `Get ${target} right before time runs out` });
+      setStatus({ title: "Go!", sub: "Click the card for the next one" });
     }
-  }, [playing, running, elapsed, target]);
+  }, [playing, running, elapsed]);
 
   const reset = () => {
     setSeen(new Set());
@@ -254,15 +250,16 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         e.preventDefault(); // also stops Space/Enter "pressing" whichever button has focus, e.g. Pass
         if (!playing) startRound();
         else if (!running) togglePause();
-        else mark("correct");
-      } else if (k === "x") mark("pass");
+        else next();
+      } else if (e.key === "ArrowRight") next();
+      else if (k === "c") complete();
       else if (k === "p") togglePause();
       else if (k === "f") toggleFullscreen();
       else if (e.key === "Escape" && presenting && !document.fullscreenElement) setPresenting(false);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [active, begun, qrOpen, playing, running, startRound, mark, togglePause, toggleFullscreen, presenting]);
+  }, [active, begun, qrOpen, playing, running, startRound, next, complete, togglePause, toggleFullscreen, presenting]);
 
   // ---- session: begin, sync to monitors, end ----
   const begin = async () => {
@@ -304,7 +301,6 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         elapsed: elapsedBefore + (running ? (performance.now() - startedAt) / 1000 : 0),
         duration,
         target,
-        correct,
         cards,
         outcome,
         left,
@@ -322,7 +318,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         if (res.ok) setViewers((await res.json()).viewers ?? 0);
       } catch {}
     },
-    [session, phase, round, current, position, running, elapsedBefore, startedAt, duration, target, correct, cards, outcome, left, problems.length, status],
+    [session, phase, round, current, position, running, elapsedBefore, startedAt, duration, target, cards, outcome, left, problems.length, status],
   );
 
   // Send on every real change (new card, pause, round over…), never on the 100 ms clock tick.
@@ -369,7 +365,8 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
 
   const btn =
     "rounded-full border-2 border-line px-[22px] py-3 font-semibold text-on-felt transition hover:bg-white/10 active:translate-y-px disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent";
-  const gold = `${btn} border-gold bg-gold text-[#2a2205] hover:bg-gold-hi`;
+  // swap the base colours rather than adding to them: two text/border colours on one element is a coin toss
+  const gold = `${btn.replace("border-line", "border-gold").replace("text-on-felt", "text-[#2a2205]")} bg-gold hover:bg-gold-hi`;
   const corner = "absolute text-center font-mono text-[clamp(1rem,3.2cqw,2rem)] leading-tight text-red";
 
   // each slot of the pattern is a letter or blank (~0.65em) plus a 0.2em gap
@@ -394,7 +391,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
       {!begun ? (
         <div className="flex aspect-[4/3] w-full max-w-[min(1000px,calc((100dvh-320px)*5/3.4))] min-w-[min(100%,320px)] flex-col items-center justify-center gap-5 rounded-[clamp(14px,2.4cqw,28px)] border-2 border-dashed border-line px-6 text-center sm:aspect-[5/3.4]">
           <p className="text-xs font-semibold tracking-[.08em] text-on-felt-soft uppercase">
-            {problems.length} cards · get {target} right in {duration} s
+            {problems.length} cards · {duration} s per round
           </p>
           <h2 className="max-w-[18ch] text-[clamp(1.8rem,5vw,3.2rem)] leading-[1.05] font-extrabold tracking-tight text-balance">
             ตอบให้ได้ {target} ข้อ ใน {duration} วิ
@@ -415,11 +412,11 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         <>
       {/* card: the back shows before the first round, the front shows the puzzle and, after a round, the results */}
       <div
-        role={playing ? undefined : "button"}
-        tabIndex={playing ? undefined : 0}
-        aria-label={playing ? undefined : "Start the round"}
-        onClick={playing ? undefined : startRound}
-        className={`@container aspect-[4/3] w-full ${cardSize} min-w-[min(100%,320px)] perspective-[1400px] sm:aspect-[5/3.4] ${playing ? "" : "cursor-pointer"}`}
+        role="button"
+        tabIndex={0}
+        aria-label={playing ? "Next card" : "Start the round"}
+        onClick={playing ? next : startRound}
+        className={`@container aspect-[4/3] w-full ${cardSize} min-w-[min(100%,320px)] perspective-[1400px] sm:aspect-[5/3.4] ${playing && !running ? "" : "cursor-pointer"}`}
       >
         <div
           className={`relative h-full w-full transition-transform duration-700 ease-[cubic-bezier(.3,1.3,.5,1)] transform-3d ${
@@ -454,13 +451,13 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
                 </div>
               </>
             )}
-            {phase === "over" && <RoundSummary cards={cards} target={target} outcome={outcome} />}
+            {phase === "over" && <RoundSummary cards={cards} outcome={outcome} seconds={elapsedBefore} />}
           </div>
         </div>
       </div>
 
-      {/* in full screen, timer, score and buttons share one row under the card */}
-      <div className={presenting ? "flex flex-wrap items-center justify-center gap-x-10 gap-y-3" : "contents"}>
+      {/* the clock and the round buttons share one row right under the card, so Next and Complete are always on screen */}
+      <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
       <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
         {/* round clock */}
         <div className="flex items-center gap-[18px]">
@@ -494,35 +491,17 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
           </div>
         </div>
 
-        {/* score: one pip per correct answer needed */}
-        {phase !== "ready" && (
-          <div className="flex flex-col items-center gap-1.5" aria-label={`${correct} of ${target} correct, ${passed} passed`}>
-            <div className="flex flex-wrap justify-center gap-1.5" aria-hidden="true">
-              {Array.from({ length: target }, (_, i) => (
-                <span
-                  key={i}
-                  className={`size-[clamp(14px,2.2vw,22px)] rounded-full border-2 transition ${
-                    i < correct ? "border-gold bg-gold" : "border-line"
-                  }`}
-                />
-              ))}
-            </div>
-            <p className="font-mono text-sm tabular-nums text-on-felt-soft">
-              <span className="text-on-felt">{correct}</span>/{target} correct · {passed} passed
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* controls */}
+      {/* round controls */}
       <div className="flex flex-wrap justify-center gap-2.5">
         {playing ? (
           <>
-            <button className={`${gold} px-8`} onClick={() => mark("correct")} disabled={!running}>
-              ✓ Correct
+            <button className={btn} onClick={next} disabled={!running}>
+              Next →
             </button>
-            <button className={btn} onClick={() => mark("pass")} disabled={!running}>
-              Pass
+            <button className={`${gold} px-8`} onClick={complete}>
+              ✓ Complete
             </button>
             <button className={btn} onClick={togglePause}>
               {running ? "Pause" : "Resume"}
@@ -533,24 +512,31 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
             {round ? "Next round" : "Start round"}
           </button>
         )}
-        <button className={btn} onClick={toggleFullscreen}>
-          {presenting ? "Exit full screen" : "Full screen"}
-        </button>
-        {!presenting && (
-          <>
-            <button className={btn} onClick={reset} disabled={playing}>
-              Shuffle deck
-            </button>
-            <button className={btn} onClick={() => setQrOpen(true)}>
-              Show QR{viewers ? ` · ${viewers}` : ""}
-            </button>
-            <button className={`${btn} hover:border-red hover:bg-red/20`} onClick={endSession}>
-              End session
-            </button>
-          </>
+        {presenting && (
+          <button className={btn} onClick={toggleFullscreen}>
+            Exit full screen
+          </button>
         )}
       </div>
       </div>
+
+      {/* session controls */}
+      {!presenting && (
+        <div className="flex flex-wrap justify-center gap-2.5">
+          <button className={btn} onClick={toggleFullscreen}>
+            Full screen
+          </button>
+          <button className={btn} onClick={reset} disabled={playing}>
+            Shuffle deck
+          </button>
+          <button className={btn} onClick={() => setQrOpen(true)}>
+            Show QR{viewers ? ` · ${viewers}` : ""}
+          </button>
+          <button className={`${btn} hover:border-red hover:bg-red/20`} onClick={endSession}>
+            End session
+          </button>
+        </div>
+      )}
 
         </>
       )}
@@ -572,7 +558,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
           />
         </label>
         <label htmlFor="target" className="flex items-center gap-2">
-          Correct to win
+          ข้อ (in the title)
           <input
             id="target"
             type="number"
@@ -591,7 +577,7 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
         </label>
       </div>
       <p hidden={presenting} className="text-center text-xs text-on-felt-soft">
-        <Kbd>Space</Kbd> start round / correct · <Kbd>X</Kbd> pass · <Kbd>P</Kbd> pause · <Kbd>F</Kbd> full screen
+        <Kbd>Space</Kbd> start round / next card · <Kbd>C</Kbd> complete · <Kbd>P</Kbd> pause · <Kbd>F</Kbd> full screen
       </p>
       {qrOpen && session && (
         <QrModal
@@ -607,39 +593,28 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
   );
 }
 
-const RESULT_MARK: Record<CardResult, { sign: string; label: string; cls: string }> = {
-  correct: { sign: "✓", label: "correct", cls: "text-[#2f8a5c]" },
-  pass: { sign: "–", label: "passed", cls: "text-muted" },
-  missed: { sign: "⏱", label: "time ran out", cls: "text-red" },
-};
-
-/** The card face after a round: the score, then every card of the round with its answer. */
-function RoundSummary({ cards, target, outcome }: { cards: RoundCard[]; target: number; outcome: SessionState["outcome"] }) {
-  const got = cards.filter((c) => c.result === "correct").length;
-  const shown = cards.slice(0, 10);
+/** The card face after a round: how it ended, then every card of the round with its answer. */
+function RoundSummary({ cards, outcome, seconds }: { cards: RoundCard[]; outcome: SessionState["outcome"]; seconds: number }) {
+  const shown = cards.slice(0, 12);
   return (
     <div className="flex h-full w-full flex-col items-center gap-[2cqw] overflow-hidden text-center">
-      <p className={`font-puzzle text-[4.2cqw] leading-tight font-extrabold ${outcome === "goal" ? "text-[#2f8a5c]" : "text-red"}`}>
-        {outcome === "goal" ? "ผ่าน! 🎉" : "หมดเวลา!"}
+      <p className={`font-puzzle text-[6cqw] leading-tight font-extrabold ${outcome === "complete" ? "text-[#2f8a5c]" : "text-red"}`}>
+        {outcome === "complete" ? "เสร็จแล้ว! 🎉" : "หมดเวลา!"}
       </p>
-      <p className="font-mono text-[12cqw] leading-none tabular-nums">
-        {got}
-        <span className="text-[.5em] text-muted">/{target}</span>
-      </p>
+      {outcome === "complete" && (
+        <p className="font-mono text-[9cqw] leading-none tabular-nums">
+          {seconds.toFixed(1)}
+          <span className="text-[.5em] text-muted"> s</span>
+        </p>
+      )}
       {shown.length > 0 && (
         <ol className="grid w-full grid-cols-2 gap-x-[3cqw] gap-y-[.8cqw] border-t border-ink/10 pt-[2cqw] text-left text-[2.6cqw]">
-          {shown.map((c, i) => {
-            const m = RESULT_MARK[c.result];
-            return (
-              <li key={i} className="flex min-w-0 items-baseline gap-[1.2cqw]">
-                <span className={`w-[1.2em] shrink-0 text-center font-bold ${m.cls}`} aria-label={m.label}>
-                  {m.sign}
-                </span>
-                <HintText hint={c.hint} className="shrink-0 font-puzzle font-extrabold" />
-                <span className="min-w-0 truncate font-puzzle font-semibold text-red">{c.answer || "—"}</span>
-              </li>
-            );
-          })}
+          {shown.map((c, i) => (
+            <li key={i} className="flex min-w-0 items-baseline gap-[1.2cqw]">
+              <HintText hint={c.hint} className="shrink-0 font-puzzle font-extrabold" />
+              <span className="min-w-0 truncate font-puzzle font-semibold text-red">{c.answer || "—"}</span>
+            </li>
+          ))}
           {cards.length > shown.length && <li className="text-muted">…and {cards.length - shown.length} more</li>}
         </ol>
       )}
