@@ -93,7 +93,10 @@ export default function Monitor({ id }: { id: string }) {
               className="font-puzzle text-[clamp(1.8rem,10cqw,3.6rem)] leading-[1.35] font-extrabold"
             />
             {st.problem.clue && (
-              <p className="mt-1 font-puzzle text-[clamp(1rem,4.6cqw,1.4rem)] leading-snug text-ink/80">{st.problem.clue}</p>
+              <>
+                <p className="mt-3 text-xs font-semibold tracking-[.08em] text-muted uppercase">Clue · read it out</p>
+                <p className="font-puzzle text-[clamp(1.2rem,5.6cqw,1.7rem)] leading-snug font-semibold">{st.problem.clue}</p>
+              </>
             )}
             <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-ink/10 pt-4">
               <div>

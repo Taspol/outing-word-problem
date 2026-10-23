@@ -338,13 +338,12 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
     "rounded-full border-2 border-line px-[22px] py-3 font-semibold text-on-felt transition hover:bg-white/10 active:translate-y-px disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent";
   const corner = "absolute text-center font-mono text-[clamp(1rem,3.2cqw,2rem)] leading-tight text-red";
 
-  // Size each line of text to the card. Thai letters are ~0.6em wide; the clue may wrap to two lines.
+  // Size each line of text to the card. Thai letters are ~0.6em wide.
   const fit = (text: string, max: number, min: number, lines: number, em: number) =>
     `${Math.max(min, Math.min(max, (84 * lines) / (Math.max(visualLength(text), 1) * em))).toFixed(2)}cqw`;
   // each slot of the pattern is a letter or blank (~0.65em) plus a 0.2em gap
-  const hintSize = current ? `${Math.max(6, Math.min(15, 84 / (Math.max(hintSlots(current.hint).length, 1) * 0.85))).toFixed(2)}cqw` : "";
-  const clueSize = current ? fit(current.clue, 5.6, 3.2, 2, 0.55) : "";
-  const answerSize = current ? fit(current.answer || "ไม่มีคำตอบ", 10, 5, 1, 0.62) : "";
+  const hintSize = current ? `${Math.max(6, Math.min(18, 84 / (Math.max(hintSlots(current.hint).length, 1) * 0.85))).toFixed(2)}cqw` : "";
+  const answerSize = current ? fit(current.answer || "ไม่มีคำตอบ", 12, 5, 1, 0.62) : "";
 
   const cardSize = presenting
     ? "max-w-[min(97vw,calc((100dvh-150px)*5/3.4))]"
@@ -422,15 +421,8 @@ export default function FlipGame({ problems, active }: { problems: Problem[]; ac
               {current && (
                 <HintText hint={current.hint} style={{ fontSize: hintSize }} className="font-puzzle leading-[1.35] font-extrabold" />
               )}
-              {current?.clue && (
-                <p
-                  style={{ fontSize: clueSize }}
-                  className="max-w-full font-puzzle leading-[1.35] font-medium text-balance text-ink/80 [overflow-wrap:anywhere]"
-                >
-                  {current.clue}
-                </p>
-              )}
-              {/* the answer's space is kept while hidden so the hint and clue don't move when it appears */}
+              {/* the answer's space is kept while hidden so the pattern doesn't move when it appears. The clue is only
+                  on the host's monitor, for the host to read out. */}
               <div
                 aria-live="polite"
                 style={{ fontSize: answerSize }}
